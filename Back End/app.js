@@ -1,12 +1,15 @@
 const { body, validationResult } = require("express-validator");
-const pool = require("./db/pool");
+const prisma = require("./db/prisma");
 const session = require("express-session");
 const passport = require("passport");
 const bcrypt = require("bcryptjs")
 const LocalStrategy = require('passport-local').Strategy;
-const pgSession = require('connect-pg-simple')(session);
+var cors = require('cors')
+//const pgSession = require('connect-pg-simple')(session);
 require('dotenv').config();
 
+const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
+const db = require("./db/queries")
 
 //imports the express framework
 const express = require("express");
@@ -14,6 +17,8 @@ const express = require("express");
 const path = require("path");
 //initalizes the express application
 const app = express();
+
+app.use(cors())
 
 
 //set the folder containing view templates to ./views
@@ -30,15 +35,29 @@ app.use(express.static(assetsPath));
 app.use(express.urlencoded({ extended: true }));
 
 
+
+
+
 /**
  *  -------------------- PASSPORT SETUP --------------------
  */
 
+/*
 const sessionStore = new pgSession({
     pool : pool,                // Connection pool
     createTableIfMissing : true,
     // Insert other connect-pg-simple options here
   });
+*/
+
+const sessionStore = new PrismaSessionStore(
+      prisma,
+      {
+        checkPeriod: 2 * 60 * 1000,  //ms
+        dbRecordIdIsSessionId: false,
+        dbRecordIdFunction: undefined,
+      }
+    );
 
 //passport setup
 app.use(session({
@@ -50,16 +69,18 @@ app.use(session({
     maxAge: 1000 * 60 * 60 *24
   },
  }));
+
 app.use(passport.initialize());
 app.use(passport.session());
-app.use(express.urlencoded({ extended: false }));
 
 
 passport.use(
   new LocalStrategy(async (username, password, done) => {
     try {
-      const { rows } = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
-      const user = rows[0];
+
+      const user = await prisma.user.findUnique({
+        where: {username: username}
+      });
 
       if (!user) {
         return done(null, false, { message: "Incorrect username" });
@@ -82,8 +103,9 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser(async (id, done) => {
   try {
-    const { rows } = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
-    const user = rows[0];
+    const user = await prisma.user.findUnique({
+        where: {id: id}
+      });
 
     done(null, user);
   } catch(err) {
@@ -97,10 +119,28 @@ passport.deserializeUser(async (id, done) => {
 
 //serve index router when root is visited
 const indexRouter = require("./routes/indexRouter");
-app.use("/",indexRouter);
+const commentsRouter = require("./routes/commentsRouter");
+const postsRouter = require("./routes/postsRouter");
+const usersRouter = require("./routes/usersRouter");
+app.use(indexRouter);
+app.use(commentsRouter);
+app.use(postsRouter);
+app.use(usersRouter);
 
 //starts the server and listens on port 3000
 const PORT = 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`My Express app - listening on port ${PORT}!`);
 });
+
+const shutdown = async () => {
+  console.log("Shutting down server...");
+  await prisma.$disconnect();
+  server.close(() => {
+    console.log("HTTP server closed.");
+    process.exit(0);
+  });
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
