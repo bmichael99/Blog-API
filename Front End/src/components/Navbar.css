@@ -1,0 +1,70 @@
+:root{
+  --primary-color: #1E1E1E;
+  --secondary-color: #121212;
+  --lighter-primary-color: #2A2A2A;
+  --highlight-color: #7289da;
+  --hover-color: #242428;
+  --primary-text-color: #F8F9FA;
+  --secondary-text-color:#4a4c51;
+  --primary-font: gg-sans, sans-serif;
+  --bold-font: gg-sans-bold, sans-serif;
+  --semibold-font: gg-sans-semibold, sans-serif;
+  --medium-font: gg-sans-medium, sans-serif;
+  --border-color: #495057;
+}
+
+
+.navbar{
+  background-color: var(--primary-color);
+}
+
+nav{
+  
+  display:flex;
+  justify-content: space-between;
+  align-items: center;
+  padding:8px;
+  color: var(--primary-text-color);
+  max-width:1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.navbar-logo{
+  font-weight:bold;
+  font-size:2rem;
+}
+
+ul{
+  list-style-type:none;
+  display:flex;
+  gap:32px;
+}
+
+li{
+  font-size:1.1rem;
+  cursor: pointer;
+}
+
+.cartCount{
+
+}
+
+.cartNav{
+  border: 1px solid var(--border-color);
+  background-color: var(--lighter-primary-color);
+  border-radius:8px;
+  padding:8px 24px;
+  display:flex;
+  gap:16px;
+  justify-content: center;
+  align-items: center;
+  vertical-align: middle; /* Align with text baseline */
+}
+
+.cartNav svg{
+  width:20px;
+  height:20px;
+  fill: white;
+  vertical-align: middle; /* Align with text baseline */
+}
