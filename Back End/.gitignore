@@ -25,3 +25,6 @@ dist-ssr
 *.sln
 *.sw?
 /generated/prisma
+/cryptography/*
+id_rsa_priv.pem
+/JWT

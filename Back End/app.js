@@ -3,8 +3,17 @@ const prisma = require("./db/prisma");
 const session = require("express-session");
 const passport = require("passport");
 const bcrypt = require("bcryptjs")
-const LocalStrategy = require('passport-local').Strategy;
 var cors = require('cors')
+const LocalStrategy = require('passport-local').Strategy;
+const jwt = require('jsonwebtoken')
+const JwtStrategy = require('passport-jwt').Strategy,
+    ExtractJwt = require('passport-jwt').ExtractJwt;
+const fs = require('fs');
+
+
+
+
+
 //const pgSession = require('connect-pg-simple')(session);
 require('dotenv').config();
 
@@ -19,7 +28,7 @@ const path = require("path");
 const app = express();
 
 app.use(cors())
-
+app.use(express.json());
 
 //set the folder containing view templates to ./views
 app.set("views", path.join(__dirname, "views"));
@@ -73,6 +82,41 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+//asynchronous key, verify identity with public key.
+const pathToKey = path.join(__dirname, 'id_rsa_pub.pem');
+const PUB_KEY = fs.readFileSync(pathToKey, 'utf8');
+
+const options = {
+  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+  secretOrKey: PUB_KEY,
+  algorithms: ['RS256']
+};
+
+const strategy = new JwtStrategy(options, async (payload,done) => {
+    try {
+
+      const user = await prisma.user.findUnique({
+        where: {id: payload.sub}
+      });
+
+      if (!user) {
+        return done(null, false, { message: "Incorrect id" });
+      }
+      /* not needed since valid JWT is already issued from login route
+      const match = await bcrypt.compare(password, user.password);
+      if (!match) {
+        // passwords do not match!
+        return done(null, false, { message: "Incorrect password" })
+      }
+      */
+      return done(null, user);
+    } catch(err) {
+      return done(err);
+    }
+});
+
+passport.use(strategy);
+
 
 passport.use(
   new LocalStrategy(async (username, password, done) => {
@@ -122,10 +166,12 @@ const indexRouter = require("./routes/indexRouter");
 const commentsRouter = require("./routes/commentsRouter");
 const postsRouter = require("./routes/postsRouter");
 const usersRouter = require("./routes/usersRouter");
+const authRouter = require("./routes/authRouter");
 app.use(indexRouter);
 app.use(commentsRouter);
 app.use(postsRouter);
 app.use(usersRouter);
+app.use(authRouter);
 
 //starts the server and listens on port 3000
 const PORT = 3000;

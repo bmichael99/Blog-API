@@ -1,6 +1,6 @@
 const prisma = require("./prisma");
 
-async function createUser(first_name,username,password){
+exports.createUser = async (first_name,username,password) => {
   return await prisma.user.create({
     data: {
       first_name: first_name,
@@ -10,7 +10,10 @@ async function createUser(first_name,username,password){
   });
 }
 
-module.exports = {
-  createUser,
+exports.getUserByUsername = async (username) => {
+  const user = await prisma.user.findUnique({
+    where: {username: username}
+  });
 
-};
+  return user;
+}

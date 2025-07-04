@@ -2,9 +2,10 @@ const { Router } = require("express");
 const userController = require("../controllers/userController");
 const userRouter = Router();
 const { isAuth } = require("../controllers/authMiddleware");
+const passport = require('passport');
 
 
-userRouter.get("/users", userController.getAllUsers);
+userRouter.get("/users", passport.authenticate('jwt', {session: false}), userController.getAllUsers);
 userRouter.post("/users", userController.createUser);
 userRouter.put("/users/:userId", userController.updateUser);
 userRouter.delete("/users/:userId", userController.deleteUser);
