@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken')
 const JwtStrategy = require('passport-jwt').Strategy,
     ExtractJwt = require('passport-jwt').ExtractJwt;
 const fs = require('fs');
+const cookieParser = require('cookie-parser');
 
 
 
@@ -17,7 +18,7 @@ const fs = require('fs');
 //const pgSession = require('connect-pg-simple')(session);
 require('dotenv').config();
 
-const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
+
 const db = require("./db/queries")
 
 //imports the express framework
@@ -27,8 +28,14 @@ const path = require("path");
 //initalizes the express application
 const app = express();
 
-app.use(cors())
+const corsOptions = {
+  origin: 'http://localhost:5173', // your frontend URL here
+  credentials: true,               // enable Set-Cookie and other credentials
+};
+app.use(cors(corsOptions));
+
 app.use(express.json());
+app.use(cookieParser());
 
 //set the folder containing view templates to ./views
 app.set("views", path.join(__dirname, "views"));
@@ -51,13 +58,12 @@ app.use(express.urlencoded({ extended: true }));
  *  -------------------- PASSPORT SETUP --------------------
  */
 
+
+const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
+
 /*
-const sessionStore = new pgSession({
-    pool : pool,                // Connection pool
-    createTableIfMissing : true,
-    // Insert other connect-pg-simple options here
-  });
-*/
+  
+
 
 const sessionStore = new PrismaSessionStore(
       prisma,
@@ -78,9 +84,10 @@ app.use(session({
     maxAge: 1000 * 60 * 60 *24
   },
  }));
+ */
 
 app.use(passport.initialize());
-app.use(passport.session());
+//app.use(passport.session());
 
 //asynchronous key, verify identity with public key.
 const pathToKey = path.join(__dirname, 'id_rsa_pub.pem');
@@ -98,7 +105,7 @@ const strategy = new JwtStrategy(options, async (payload,done) => {
       const user = await prisma.user.findUnique({
         where: {id: payload.sub}
       });
-
+      console.log(payload);
       if (!user) {
         return done(null, false, { message: "Incorrect id" });
       }
@@ -117,7 +124,7 @@ const strategy = new JwtStrategy(options, async (payload,done) => {
 
 passport.use(strategy);
 
-
+/*
 passport.use(
   new LocalStrategy(async (username, password, done) => {
     try {
@@ -140,7 +147,8 @@ passport.use(
     }
   })
 );
-
+*/
+/*
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
@@ -156,9 +164,10 @@ passport.deserializeUser(async (id, done) => {
     done(err);
   }
 });
+*/
 
 /**
- *  -------------------- ROUTER AND SERVER --------------------
+ *  -------------------- ROUTES --------------------
  */
 
 //serve index router when root is visited
@@ -167,11 +176,31 @@ const commentsRouter = require("./routes/commentsRouter");
 const postsRouter = require("./routes/postsRouter");
 const usersRouter = require("./routes/usersRouter");
 const authRouter = require("./routes/authRouter");
+const refreshRouter = require("./routes/refreshRouter");
 app.use(indexRouter);
 app.use(commentsRouter);
 app.use(postsRouter);
 app.use(usersRouter);
 app.use(authRouter);
+app.use(refreshRouter);
+
+
+/**
+ * -------------------- ERROR HANDLING --------------------
+ */
+
+app.use((err, req, res, next) => {
+  if (err.code === 'P2002') {
+    return res.status(409).json({ message: 'Username already exists' });
+  }
+
+  console.error(err); // Log unexpected errors
+  res.status(500).json({ message: 'Something went wrong' });
+});
+
+/**
+ * -------------------- SERVER --------------------
+ */
 
 //starts the server and listens on port 3000
 const PORT = 3000;
