@@ -6,23 +6,32 @@ const PRIV_KEY = fs.readFileSync(__dirname + "/../id_rsa_priv.pem", "utf8");
 function issueJWT(user) {
   const user_id = user.id;
 
-  const expiresIn = "30d";
+  const refreshExpiresIn = "30d";
+  const accessExpiresIn = "30s";
 
   const payload = {
     sub: user_id,
-    iat: Date.now(),
+    iat: Date.now()/1000,
   };
 
-  const signedToken = jsonwebtoken.sign(payload, PRIV_KEY, {
-    expiresIn: expiresIn,
+  const accessToken = jsonwebtoken.sign(payload, PRIV_KEY, {
+    expiresIn: accessExpiresIn,
+    algorithm: "RS256",
+  });
+
+  const refreshToken = jsonwebtoken.sign(payload, PRIV_KEY, {
+    expiresIn: refreshExpiresIn,
     algorithm: "RS256",
   });
 
   return {
-    token: "Bearer " + signedToken,
-    expires: expiresIn,
+    accessToken: "Bearer " + accessToken,
+    refreshToken: refreshToken,
+    refreshExpires: refreshExpiresIn,
+    accessExpires: accessExpiresIn
   };
 }
+
 
 module.exports = {
   issueJWT,
