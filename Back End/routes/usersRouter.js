@@ -3,6 +3,7 @@ const userController = require("../controllers/userController");
 const userRouter = Router();
 const { isAuth } = require("../controllers/authMiddleware");
 const passport = require('passport');
+const { verifyJWT } = require("../middleware/verifyJWT");
 
 
 userRouter.get("/users", passport.authenticate('jwt', {session: false}), userController.getAllUsers);
